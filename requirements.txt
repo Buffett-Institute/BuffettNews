@@ -4,3 +4,8 @@ beautifulsoup4==4.12.3
 lxml==5.2.2
 python-dateutil==2.9.0.post0
 openpyxl==3.1.5
+spreadsheet
+urllib3
+bs4
+html5lib
+anthropic

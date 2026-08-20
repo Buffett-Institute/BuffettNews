@@ -16,6 +16,8 @@ import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 
+import summarizer
+
 try:
     import lxml  # noqa: F401
     _HTML_PARSER = "lxml"
@@ -147,6 +149,13 @@ def _extract_json_ld(soup):
             if any(t for t in types if isinstance(t, str) and "Article" in t):
                 return obj
     return None
+
+def _extract_body_text(soup, max_chars=4000):
+    """Pull visible paragraph text to give the summarizer real article
+    content instead of just a thin meta description."""
+    paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
+    text = " ".join(p for p in paragraphs if len(p) > 40)
+    return text[:max_chars]
 
 
 def _jsonld_str(value):
@@ -290,7 +299,15 @@ def extract_article_metadata(url: str, connection_note: str = "") -> dict:
     source = extract_source(soup, jsonld, url)
     author = extract_author(soup, jsonld)
     alt_text, has_image = extract_image_alt(soup, jsonld, url)
-    description = build_short_description(soup, jsonld, connection_note, title)
+
+    #summmary
+    gist = _meta_content_any(soup, ["og:description", "twitter:description", "description"])
+    if not gist and jsonld:
+        gist = jsonld.get("description")
+    body_text = _extract_body_text(soup)
+    description = summarizer.generate_short_description(
+        title, body_text or gist, connection_note
+    ) or build_short_description(soup, jsonld, connection_note, title)
 
     if not has_image:
         image_alt_final = f"Author: {author}" if author else ""
