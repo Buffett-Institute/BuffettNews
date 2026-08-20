@@ -310,6 +310,5 @@ def extract_article_metadata(url: str, connection_note: str = "") -> dict:
         "image_alt": image_alt_final,
         "image_note": image_note,
         "short_description": description,
-        "content_type": content_type,
         "author": author or "",
     }
