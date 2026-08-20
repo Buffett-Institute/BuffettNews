@@ -19,17 +19,17 @@ COLUMNS = [
 HEADER_ROW = 2
 
 
-def build_spreadsheet(data_list):
+def build_spreadsheet(xlsx_path):
     wb = Workbook()
     ws = wb.active
-    ws.title = "Test Buffett_News"
+    ws.title = "Sheet1"
 
     #Define styles
-    title_font = Font(name='Aptos Display', size=25, bold=True, color = "FFFFFF")
+    title_font = Font(name='Aptos Display', size=25, bold=True, color = "FF000000")
     title_fill = PatternFill(start_color="FF85B1F2", end_color="FF85B1F2", fill_type="solid")
     title_alignment = Alignment(horizontal="left")
 
-    header_font = Font(name='Aptos Narrow', size=20, bold=True, color="FFFFFF")
+    header_font = Font(name='Aptos Narrow', size=20, bold=True, color="FF000000")
     header_fill = PatternFill(start_color="FF8AACDE", end_color="FF8AACDE", fill_type="solid")
     header_alignment = Alignment(horizontal="center", vertical="center")
 
@@ -39,7 +39,7 @@ def build_spreadsheet(data_list):
         "approved", "posted", "title", "date", "url", "source",
         "canva_title", "image_alt", "short_description", "content_type",
     ]
-    ws.append(title)
+    ws.append([title])
     ws.append(headers)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
 
@@ -98,9 +98,9 @@ def append_row(xlsx_path: str, data: dict) -> int:
         except ValueError:
             pass  # leave as free text if it doesn't parse
 
-    body_font = Font(name='Aptos Narrow', size=20, bold=False, color="FFFFFF")
+    body_font = Font(name='Aptos Narrow', size=20, bold=False, color="FF000000")
     body_alignment = Alignment(horizontal='left', wrap_text=True)
-    thin_border = Side(border_style='thin', color='000000')
+    thin_border = Side(border_style='thin', color='FF000000')
     border_style = Border( top=thin_border, left=thin_border, right=thin_border, bottom=thin_border)
 
     for col in range(1, 11):
@@ -116,9 +116,11 @@ def append_row(xlsx_path: str, data: dict) -> int:
 
 
 def read_recent_rows(xlsx_path: str, limit: int = 10):
+    _ensure_workbook(xlsx_path)
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
-    ws = wb["Sheet1"]
+    ws = wb["Sheet1"] if "Sheet1" in wb.sheetnames else wb.active
     last = HEADER_ROW
+
     for r in range(HEADER_ROW + 1, ws.max_row + 1):
         if ws.cell(row=r, column=3).value:
             last = r
