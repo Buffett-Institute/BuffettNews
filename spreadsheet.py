@@ -11,11 +11,11 @@ import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-COLUMNS = [
+HEADER_LABELS = [
    "approved", "posted", "title", "date", "url", "source",
     "canva_title", "image_alt", "short_description", "content_type",
 ]
-
+COLUMN_WIDTHS = [12, 10, 42, 14, 35, 25, 28, 45, 70, 20]
 HEADER_ROW = 2
 
 
@@ -35,13 +35,9 @@ def build_spreadsheet(xlsx_path):
 
     #Add headers
     title = "Buffett News Page"
-    headers = [
-        "approved", "posted", "title", "date", "url", "source",
-        "canva_title", "image_alt", "short_description", "content_type",
-    ]
     ws.append([title])
-    ws.append(headers)
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    ws.append(HEADER_LABELS)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(HEADER_LABELS))
 
     #Apply formatting to title
     for cell in ws[1]:
@@ -51,8 +47,11 @@ def build_spreadsheet(xlsx_path):
     #Apply formatting to headers
     for cell in ws[2]:
         cell.font = header_font
-        cell.fill = title_fill
-        cell.alignment = title_alignment
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+    #Set column widths so text doesn't wrap into narrow columns
+    for i, width in enumerate(COLUMN_WIDTHS, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
 
     #Freeze title and header panes
     ws.freeze_panes = 'A3'
@@ -110,7 +109,8 @@ def append_row(xlsx_path: str, data: dict) -> int:
         dst_cell.font = body_font
         dst_cell.alignment = body_alignment
         dst_cell.border = border_style
-
+        if col == 4: 
+            dst_cell.number_format = "mm-dd-yy"
     wb.save(xlsx_path)
     return row
 
