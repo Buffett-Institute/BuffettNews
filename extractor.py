@@ -18,11 +18,8 @@ from dateutil import parser as dateparser
 
 import summarizer
 
-try:
-    import lxml  # noqa: F401
-    _HTML_PARSER = "lxml"
-except ImportError:
-    _HTML_PARSER = "html.parser"  # built into Python; used if lxml isn't installed
+
+_HTML_PARSER = "html.parser"  # built into Python; used if lxml isn't installed
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
