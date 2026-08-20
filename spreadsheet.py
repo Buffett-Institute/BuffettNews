@@ -64,11 +64,6 @@ def _ensure_workbook(xlsx_path: str):
     if not os.path.exists(xlsx_path):
         build_spreadsheet(xlsx_path)
 
-def _next_empty_row(ws) -> int:
-    row = HEADER_ROW + 1
-    while ws.cell(row=row, column=3).value not in (None, ""):
-        row += 1
-    return row
 
 def append_row(xlsx_path: str, data: dict) -> int:
     """data keys: approved, posted, title, date (YYYY-MM-DD str or empty),
@@ -77,7 +72,9 @@ def append_row(xlsx_path: str, data: dict) -> int:
     _ensure_workbook(xlsx_path)
     wb = openpyxl.load_workbook(xlsx_path)
     ws = wb["Sheet1"] if "Sheet1" in wb.sheetnames else wb.active
-    row = _next_empty_row(ws)
+    
+    row = HEADER_ROW + 1
+    ws.insert_rows(row)
 
     values = {
         1: data.get("approved", "") or "",
@@ -119,16 +116,10 @@ def read_recent_rows(xlsx_path: str, limit: int = 10):
     _ensure_workbook(xlsx_path)
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     ws = wb["Sheet1"] if "Sheet1" in wb.sheetnames else wb.active
-    last = HEADER_ROW
-
-    for r in range(HEADER_ROW + 1, ws.max_row + 1):
-        if ws.cell(row=r, column=3).value:
-            last = r
-    start = max(HEADER_ROW + 1, last - limit + 1)
     rows = []
-    for r in range(start, last + 1):
+    for r in range(HEADER_ROW + 1, HEADER_ROW + 1 + limit):
         if not ws.cell(row=r, column=3).value:
-            continue
+            break
         date_val = ws.cell(row=r, column=4).value
         rows.append({
             "row": r,
@@ -140,5 +131,4 @@ def read_recent_rows(xlsx_path: str, limit: int = 10):
             "source": ws.cell(row=r, column=6).value,
             "content_type": ws.cell(row=r, column=10).value,
         })
-    rows.reverse()
     return rows
