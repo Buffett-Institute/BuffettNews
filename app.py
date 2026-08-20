@@ -7,8 +7,8 @@ from extractor import ExtractionError, extract_article_metadata
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-xlsx_path = os.environ.get(
-    "xlsx_path", os.path.join(os.path.dirname(__file__), "Test Buffett_News.xlsx")
+XLSX_PATH = os.environ.get(
+    "XLSX_PATH", os.path.join(os.path.dirname(__file__), "data", "Test Buffett_News.xlsx")
 )
 
 @app.route("/")
