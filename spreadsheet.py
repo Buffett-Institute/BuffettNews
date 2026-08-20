@@ -5,15 +5,54 @@ existing sheet's columns and per-cell formatting exactly.
 from copy import copy
 from datetime import datetime
 
-import openpyxl
+import openpyxl 
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
-COLUMNS = [
-    "approved", "posted", "title", "date", "url", "source",
-    "canva_title", "image_alt", "short_description", "content_type",
-]
+#COLUMNS = [
+#    "approved", "posted", "title", "date", "url", "source",
+#    "canva_title", "image_alt", "short_description", "content_type",
+#]
+
 HEADER_ROW = 2
-STYLE_SOURCE_ROW = 3
 
+
+def build_spreadsheet(data_list):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Test Buffett_News"
+
+    #Define styles
+    title_font = Font(name='Aptos Display', size=25, bold=True, color = "FFFFFF")
+    title_fill = PatternFill(start_color="85B1F2", end_color="85B1F2", fill_type="solid")
+    title_alignment = Alignment(horizontal="left")
+
+    header_font = Font(name='Aptos Narrow', size=20, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="8AACDE", end_color="8AACDE", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    #Add headers
+    title = "Buffett News Page"
+    headers = [
+        "approved", "posted", "title", "date", "url", "source",
+        "canva_title", "image_alt", "short_description", "content_type",
+    ]
+    ws.append(title)
+    ws.append(headers)
+
+    #Apply formatting to title
+    for cell in ws[1]:
+        cell.font = title_font
+        cell.fill = title_fill
+        cell.alignment = title_alignment
+    #Apply formatting to headers
+    for cell in ws[2]:
+        cell.font = header_font
+        cell.fill = title_fill
+        cell.alignment = title_alignment
+
+    #Freeze title and header panes
+    ws.freeze_panes = ['A1', 'A2']
 
 def _next_empty_row(ws) -> int:
     row = HEADER_ROW + 1
@@ -40,7 +79,6 @@ def append_row(xlsx_path: str, data: dict) -> int:
         7: data.get("canva_title", "") or "",
         8: data.get("image_alt", "") or "",
         9: data.get("short_description", "") or "",
-        10: data.get("content_type", "") or "",
     }
     if values[4]:
         try:
@@ -48,15 +86,18 @@ def append_row(xlsx_path: str, data: dict) -> int:
         except ValueError:
             pass  # leave as free text if it doesn't parse
 
+    body_font = Font(name='Aptos Narrow', size=20, bold=False, color="FFFFFF")
+    body_alignment = Alignment(horizontal='left', wrap_text=True)
+    thin_border = Side(border_style='thin', color='000000')
+    border_style = Border( top=thin_border, left=thin_border, right=thin_border, bottom=thin_border)
+
     for col in range(1, 11):
-        src_cell = ws.cell(row=STYLE_SOURCE_ROW, column=col)
+        #src_cell = ws.cell(row=STYLE_SOURCE_ROW, column=col)
         dst_cell = ws.cell(row=row, column=col)
         dst_cell.value = values[col]
-        dst_cell.font = copy(src_cell.font)
-        dst_cell.alignment = copy(src_cell.alignment)
-        dst_cell.fill = copy(src_cell.fill)
-        dst_cell.border = copy(src_cell.border)
-        dst_cell.number_format = src_cell.number_format
+        dst_cell.font = body_font
+        dst_cell.alignment = body_alignment
+        dst_cell.border = border_style
 
     wb.save(xlsx_path)
     return row
