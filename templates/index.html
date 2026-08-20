@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buffett News Page — Article Intake</title>
+<style>
+  :root {
+    --purple: #401f68;
+    --purple-light: #f4f0fa;
+    --border: #d9d3e5;
+    --text: #241b33;
+    --muted: #6b6478;
+    --good: #1b7a3d;
+    --bad: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #faf9fc;
+    color: var(--text);
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .sub { color: var(--muted); margin-top: 0; margin-bottom: 1.5rem; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  label { display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.9rem; }
+  input[type=text], input[type=url], textarea, select {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    margin-bottom: 1rem;
+  }
+  textarea { resize: vertical; min-height: 3.5rem; }
+  .row { display: flex; gap: 1rem; }
+  .row > div { flex: 1; }
+  .checks { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
+  .checks label { display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
+  .checks input { margin: 0; }
+  button {
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    padding: 0.7rem 1.3rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--purple); border: 1px solid var(--purple); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .note { font-size: 0.85rem; color: var(--muted); margin-top: -0.5rem; margin-bottom: 1rem; }
+  .flag { font-size: 0.85rem; background: #fff6e0; border: 1px solid #e8c766; padding: 0.5rem 0.7rem; border-radius: 6px; margin-bottom: 1rem; }
+  .error { color: var(--bad); font-size: 0.9rem; margin-top: 0.5rem; }
+  .success { color: var(--good); font-weight: 600; }
+  #step2 { display: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  .spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -0.15em; margin-right: 0.4em; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Buffett News Page — Article Intake</h1>
+  <p class="sub">Paste an article URL and a note on its connection to the Roberta Buffett Institute. Review the auto-filled fields, then add the row to the spreadsheet.</p>
+
+  <div class="card" id="step1">
+    <label for="url">Article URL</label>
+    <input type="url" id="url" placeholder="https://example.com/article" required>
+
+    <label for="note">Connection to the Roberta Buffett Institute</label>
+    <textarea id="note" placeholder="e.g. the lead author is a Buffett Faculty Fellow in the Global Water Security working group"></textarea>
+    <div class="note">A phrase or sentence is fine — it gets woven into the short description.</div>
+
+    <button id="fetchBtn" onclick="doPreview()">Fetch article details</button>
+    <div class="error" id="step1Error"></div>
+  </div>
+
+  <div class="card" id="step2">
+    <label for="title">Title (title case)</label>
+    <input type="text" id="f_title">
+
+    <div class="row">
+      <div>
+        <label for="date">Publication date</label>
+        <input type="text" id="f_date" placeholder="YYYY-MM-DD">
+      </div>
+      <div>
+        <label for="content_type">Content type</label>
+        <select id="f_content_type">
+          <option value="Buffett in the News">Buffett in the News</option>
+          <option value="Research">Research</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="source">Source / outlet</label>
+        <input type="text" id="f_source">
+      </div>
+      <div>
+        <label for="canva_title">Image title in Canva (manual)</label>
+        <input type="text" id="f_canva" placeholder="optional">
+      </div>
+    </div>
+
+    <label for="f_url">External URL</label>
+    <input type="text" id="f_url">
+
+    <label for="f_alt">Image alt text</label>
+    <input type="text" id="f_alt">
+    <div class="flag" id="altFlag" style="display:none;"></div>
+
+    <label for="f_desc">Short description</label>
+    <textarea id="f_desc" style="min-height: 5rem;"></textarea>
+
+    <div class="checks">
+      <label><input type="checkbox" id="f_approved"> Approved</label>
+      <label><input type="checkbox" id="f_posted"> Posted</label>
+    </div>
+
+    <button onclick="doSave()" id="saveBtn">Add to spreadsheet</button>
+    <button class="secondary" onclick="resetForm()">Start over</button>
+    <div class="error" id="step2Error"></div>
+    <div class="success" id="step2Success"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <strong>Recently added rows</strong>
+      <a href="/download">Download current spreadsheet</a>
+    </div>
+    <table id="recentTable">
+      <thead><tr><th>Title</th><th>Date</th><th>Source</th><th>Type</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function doPreview() {
+  const url = document.getElementById('url').value.trim();
+  const note = document.getElementById('note').value.trim();
+  const err = document.getElementById('step1Error');
+  err.textContent = '';
+  if (!url || !note) {
+    err.textContent = 'Both the URL and the connection note are required.';
+    return;
+  }
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Fetching…';
+  try {
+    const resp = await fetch('/api/preview', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url, note})
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      err.textContent = data.error || 'Something went wrong.';
+      return;
+    }
+    document.getElementById('f_title').value = data.title || '';
+    document.getElementById('f_date').value = data.date || '';
+    document.getElementById('f_source').value = data.source || '';
+    document.getElementById('f_url').value = data.url || url;
+    document.getElementById('f_alt').value = data.image_alt || '';
+    document.getElementById('f_desc').value = data.short_description || '';
+    document.getElementById('f_content_type').value = data.content_type || 'Buffett in the News';
+    document.getElementById('f_canva').value = '';
+    document.getElementById('f_approved').checked = false;
+    document.getElementById('f_posted').checked = false;
+
+    const altFlag = document.getElementById('altFlag');
+    if (data.image_note) {
+      altFlag.style.display = 'block';
+      altFlag.textContent = data.image_note;
+    } else {
+      altFlag.style.display = 'none';
+    }
+    document.getElementById('step2').style.display = 'block';
+    document.getElementById('step2').scrollIntoView({behavior: 'smooth'});
+  } catch (e) {
+    err.textContent = 'Network error: ' + e;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Fetch article details';
+  }
+}
+
+async function doSave() {
+  const err = document.getElementById('step2Error');
+  const ok = document.getElementById('step2Success');
+  err.textContent = '';
+  ok.textContent = '';
+  const payload = {
+    title: document.getElementById('f_title').value.trim(),
+    date: document.getElementById('f_date').value.trim(),
+    source: document.getElementById('f_source').value.trim(),
+    url: document.getElementById('f_url').value.trim(),
+    image_alt: document.getElementById('f_alt').value.trim(),
+    short_description: document.getElementById('f_desc').value.trim(),
+    content_type: document.getElementById('f_content_type').value,
+    canva_title: document.getElementById('f_canva').value.trim(),
+    approved: document.getElementById('f_approved').checked ? 'Y' : '',
+    posted: document.getElementById('f_posted').checked ? 'Y' : '',
+  };
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/api/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      err.textContent = data.error || 'Something went wrong.';
+      return;
+    }
+    ok.textContent = `Added to row ${data.row} of the spreadsheet.`;
+    loadRecent();
+  } catch (e) {
+    err.textContent = 'Network error: ' + e;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function resetForm() {
+  document.getElementById('url').value = '';
+  document.getElementById('note').value = '';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1Error').textContent = '';
+}
+
+async function loadRecent() {
+  try {
+    const resp = await fetch('/api/recent');
+    const data = await resp.json();
+    const tbody = document.querySelector('#recentTable tbody');
+    tbody.innerHTML = '';
+    (data.rows || []).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${(r.title||'').slice(0,60)}</td><td>${r.date||''}</td><td>${r.source||''}</td><td>${r.content_type||''}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) { /* ignore */ }
+}
+loadRecent();
+</script>
+</body>
+</html>

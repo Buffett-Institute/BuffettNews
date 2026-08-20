@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+*.xlsx.lock
+
+# The live spreadsheet is data, not code: keep it out of version control
+# so appended rows don't churn the git history with binary diffs. Drop
+# your own copy at data/Buffett_News_Page.xlsx (or point XLSX_PATH at it).
+data/*.xlsx
