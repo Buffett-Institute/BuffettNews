@@ -44,14 +44,25 @@ class ExtractionError(Exception):
     pass
 
 
+REQUEST_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
 def fetch_html(url: str) -> str:
     try:
-        resp = requests.get(
-            url,
-            headers={"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"},
-            timeout=15,
-        )
+        resp = requests.get(url, headers=REQUEST_HEADERS, timeout=15)
         resp.raise_for_status()
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code in (401, 403, 429):
+            raise ExtractionError(
+                f"{urlparse(url).netloc} blocked the automated fetch (HTTP "
+                f"{exc.response.status_code}). Some outlets (e.g. the NYT, WSJ) reject "
+                "scraper requests outright — fill in the fields manually below."
+            ) from exc
+        raise ExtractionError(f"Could not fetch the article URL: {exc}") from exc
     except requests.RequestException as exc:
         raise ExtractionError(f"Could not fetch the article URL: {exc}") from exc
     return resp.text

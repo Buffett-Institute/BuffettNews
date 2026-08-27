@@ -86,6 +86,7 @@
     <div class="note">A phrase or sentence is fine — it gets woven into the short description.</div>
 
     <button id="fetchBtn" onclick="doPreview()">Fetch article details</button>
+    <button class="secondary" id="manualBtn" onclick="openManually()" style="display:none;">Enter details manually</button>
     <div class="error" id="step1Error"></div>
   </div>
 
@@ -162,6 +163,8 @@ async function doPreview() {
     return;
   }
   const btn = document.getElementById('fetchBtn');
+  const manualBtn = document.getElementById('manualBtn');
+  manualBtn.style.display = 'none';
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Fetching…';
   try {
@@ -173,6 +176,9 @@ async function doPreview() {
     const data = await resp.json();
     if (!resp.ok) {
       err.textContent = data.error || 'Something went wrong.';
+      if (data.blocked) {
+        manualBtn.style.display = 'inline-block';
+      }
       return;
     }
     document.getElementById('f_title').value = data.title || '';
@@ -201,6 +207,23 @@ async function doPreview() {
     btn.disabled = false;
     btn.textContent = 'Fetch article details';
   }
+}
+
+function openManually() {
+  const url = document.getElementById('url').value.trim();
+  document.getElementById('f_title').value = '';
+  document.getElementById('f_date').value = '';
+  document.getElementById('f_source').value = '';
+  document.getElementById('f_url').value = url;
+  document.getElementById('f_alt').value = '';
+  document.getElementById('f_desc').value = '';
+  document.getElementById('f_content_type').value = 'Buffett in the News';
+  document.getElementById('f_canva').value = '';
+  document.getElementById('f_approved').checked = false;
+  document.getElementById('f_posted').checked = false;
+  document.getElementById('altFlag').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('step2').scrollIntoView({behavior: 'smooth'});
 }
 
 async function doSave() {
@@ -247,6 +270,7 @@ function resetForm() {
   document.getElementById('note').value = '';
   document.getElementById('step2').style.display = 'none';
   document.getElementById('step1Error').textContent = '';
+  document.getElementById('manualBtn').style.display = 'none';
 }
 
 async function loadRecent() {
