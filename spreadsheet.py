@@ -46,7 +46,7 @@ def _extract_sheet_id(value):
 # Fallback if the GOOGLE_SHEET_ID environment variable isn't set/visible to
 # the process — paste the sheet's ID (or its full URL) here. The env var
 # still wins when both are set.
-HARDCODED_SHEET_ID = ""
+HARDCODED_SHEET_ID = "https://docs.google.com/spreadsheets/d/1NTWyKxvovu7w292xZ29e9ZiSCAwIri_ngU4gPhTSHnM/edit?usp=sharing"
 GOOGLE_SHEET_ID = _extract_sheet_id(os.environ.get("GOOGLE_SHEET_ID") or HARDCODED_SHEET_ID)
 
 
