@@ -9,3 +9,8 @@ venv/
 # so appended rows don't churn the git history with binary diffs. Drop
 # your own copy at data/Buffett_News_Page.xlsx (or point XLSX_PATH at it).
 data/*.xlsx
+
+# Google service account key and the cached ID of the sheet the app creates
+# on first run — both are per-deployment secrets/state, not code.
+service_account.json
+data/sheet_id.json
