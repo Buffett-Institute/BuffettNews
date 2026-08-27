@@ -29,7 +29,7 @@ def preview():
     try:
         meta = extract_article_metadata(url, note)
     except ExtractionError as exc:
-        return jsonify({"error": str(exc)}), 502
+        return jsonify({"error": str(exc), "blocked": True}), 502
     except Exception as exc:  # noqa: BLE001 - surface any scraping failure to the UI
         return jsonify({"error": f"Unexpected error while scraping the article: {exc}"}), 500
     return jsonify(meta)
