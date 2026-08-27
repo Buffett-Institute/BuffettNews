@@ -1,8 +1,14 @@
 """
 Appends a new row to the Buffett News Page Google Sheet, replacing the old
-local .xlsx storage. Authenticates as a service account; the target sheet
-is created on first run (and its ID cached in SHEET_ID_PATH) unless
-GOOGLE_SHEET_ID is set to point at an existing sheet.
+local .xlsx storage. Authenticates as a service account.
+
+Personal (non-Workspace) service accounts have no Drive storage quota of
+their own, so they can't create a brand-new spreadsheet — only read/write
+one a human already owns and shared with them. Point GOOGLE_SHEET_ID at a
+sheet you created yourself (File > Share it with the service account's
+email as Editor); the headers/formatting are applied automatically the
+first time the app touches a blank sheet. The ID is cached in
+SHEET_ID_PATH so it isn't re-resolved on every request.
 """
 import json
 import os
@@ -107,25 +113,12 @@ def _body_format():
     }
 
 
-def _create_spreadsheet():
-    sheets = _sheets()
-    body = {
-        "properties": {"title": DOC_TITLE},
-        "sheets": [{
-            "properties": {
-                "title": SHEET_TITLE,
-                "gridProperties": {"frozenRowCount": HEADER_ROW},
-            }
-        }],
-    }
-    created = sheets.spreadsheets().create(
-        body=body, fields="spreadsheetId,spreadsheetUrl,sheets.properties.sheetId"
-    ).execute()
-    spreadsheet_id = created["spreadsheetId"]
-    sheet_id = created["sheets"][0]["properties"]["sheetId"]
-    url = created.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
-
+def _formatting_requests(sheet_id):
     requests = [
+        {"updateSheetProperties": {
+            "properties": {"sheetId": sheet_id, "gridProperties": {"frozenRowCount": HEADER_ROW}},
+            "fields": "gridProperties.frozenRowCount",
+        }},
         {"mergeCells": {
             "range": {"sheetId": sheet_id, "startRowIndex": 0, "endRowIndex": 1,
                       "startColumnIndex": 0, "endColumnIndex": len(HEADER_LABELS)},
@@ -156,45 +149,91 @@ def _create_spreadsheet():
             "properties": {"pixelSize": width},
             "fields": "pixelSize",
         }})
+    return requests
 
-    sheets.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body={"requests": requests}).execute()
 
-    if SHEET_SHARE_WITH:
-        drive = _drive()
-        for email in [e.strip() for e in SHEET_SHARE_WITH.split(",") if e.strip()]:
-            try:
-                drive.permissions().create(
-                    fileId=spreadsheet_id,
-                    body={"type": "user", "role": "writer", "emailAddress": email},
-                    sendNotificationEmail=False,
-                ).execute()
-            except HttpError as exc:
-                raise SheetError(f"Created the sheet but couldn't share it with {email}: {exc}") from exc
+def _share_with_configured_emails(spreadsheet_id):
+    if not SHEET_SHARE_WITH:
+        return
+    drive = _drive()
+    for email in [e.strip() for e in SHEET_SHARE_WITH.split(",") if e.strip()]:
+        try:
+            drive.permissions().create(
+                fileId=spreadsheet_id,
+                body={"type": "user", "role": "writer", "emailAddress": email},
+                sendNotificationEmail=False,
+            ).execute()
+        except HttpError as exc:
+            raise SheetError(f"Created the sheet but couldn't share it with {email}: {exc}") from exc
+
+
+def _create_spreadsheet():
+    """Only works for Workspace service accounts with Drive storage quota
+    (e.g. via a shared drive) — a bare personal-account service account
+    will 403 here. Prefer pointing GOOGLE_SHEET_ID at a sheet you created
+    and shared with the service account instead."""
+    sheets = _sheets()
+    body = {
+        "properties": {"title": DOC_TITLE},
+        "sheets": [{"properties": {"title": SHEET_TITLE}}],
+    }
+    created = sheets.spreadsheets().create(
+        body=body, fields="spreadsheetId,spreadsheetUrl,sheets.properties.sheetId"
+    ).execute()
+    spreadsheet_id = created["spreadsheetId"]
+    sheet_id = created["sheets"][0]["properties"]["sheetId"]
+    url = created.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
+
+    sheets.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body={"requests": _formatting_requests(sheet_id)}
+    ).execute()
+    _share_with_configured_emails(spreadsheet_id)
 
     _cache_sheet(spreadsheet_id, sheet_id, url)
     return {"spreadsheet_id": spreadsheet_id, "sheet_id": sheet_id, "url": url}
 
 
+def _is_blank(spreadsheet_id):
+    sheets = _sheets()
+    resp = sheets.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id, range=f"{SHEET_TITLE}!A1:A2"
+    ).execute()
+    return not resp.get("values")
+
+
+def _adopt_existing_sheet(env_id):
+    sheets = _sheets()
+    meta = sheets.spreadsheets().get(
+        spreadsheetId=env_id, fields="spreadsheetId,spreadsheetUrl,sheets.properties"
+    ).execute()
+    sheet_props = next(
+        (s["properties"] for s in meta["sheets"] if s["properties"]["title"] == SHEET_TITLE),
+        meta["sheets"][0]["properties"],
+    )
+    resolved = {
+        "spreadsheet_id": meta["spreadsheetId"],
+        "sheet_id": sheet_props["sheetId"],
+        "url": meta.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{env_id}",
+    }
+
+    if _is_blank(resolved["spreadsheet_id"]):
+        sheets.spreadsheets().batchUpdate(
+            spreadsheetId=resolved["spreadsheet_id"],
+            body={"requests": _formatting_requests(resolved["sheet_id"])},
+        ).execute()
+
+    _cache_sheet(**resolved)
+    return resolved
+
+
 def _resolve_sheet():
-    """Returns {"spreadsheet_id", "sheet_id", "url"}, creating the sheet on first use."""
+    """Returns {"spreadsheet_id", "sheet_id", "url"}."""
     env_id = os.environ.get("GOOGLE_SHEET_ID")
     if env_id:
         cached = _load_cached_sheet()
         if cached and cached.get("spreadsheet_id") == env_id:
             return cached
-        sheets = _sheets()
-        meta = sheets.spreadsheets().get(spreadsheetId=env_id, fields="spreadsheetId,spreadsheetUrl,sheets.properties").execute()
-        sheet_props = next(
-            (s["properties"] for s in meta["sheets"] if s["properties"]["title"] == SHEET_TITLE),
-            meta["sheets"][0]["properties"],
-        )
-        resolved = {
-            "spreadsheet_id": meta["spreadsheetId"],
-            "sheet_id": sheet_props["sheetId"],
-            "url": meta.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{env_id}",
-        }
-        _cache_sheet(**resolved)
-        return resolved
+        return _adopt_existing_sheet(env_id)
 
     cached = _load_cached_sheet()
     if cached:

@@ -38,7 +38,10 @@ Then open http://127.0.0.1:5000 in your browser.
 ### Google Sheets setup (one-time)
 
 The app writes to a Google Sheet via a service account, so there's no login
-flow — do this once before the first run:
+flow. **Important:** a personal (non-Workspace) service account has no
+Drive storage quota of its own — it cannot create a brand-new spreadsheet,
+only read/write one a real Google account already owns and shared with it.
+So you create the sheet, not the app. Do this once before the first run:
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), create
    (or reuse) a project, then enable the **Google Sheets API** and
@@ -46,28 +49,33 @@ flow — do this once before the first run:
 2. Under **IAM & Admin → Service Accounts**, create a service account and
    add a JSON key. Download it and save it as `service_account.json` in the
    project root (this file is gitignored — never commit it).
-3. Set which of your own Google accounts should get edit access to the
-   sheet the app creates, since a sheet made by the service account is
-   otherwise only visible to that service account:
+3. Go to [sheets.new](https://sheets.new) to create a blank Google Sheet
+   under your own account. Click **Share**, paste in the service account's
+   email (the `client_email` field in `service_account.json`, looks like
+   `...@your-project.iam.gserviceaccount.com`), and give it **Editor**
+   access.
+4. Copy the sheet's ID out of its URL — the long string between `/d/` and
+   `/edit` in `https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit` —
+   and set it before running the app:
 
    ```bash
-   export GOOGLE_SHEET_SHARE_WITH=you@example.com
+   export GOOGLE_SHEET_ID=<SHEET_ID>
    ```
 
-4. Run the app. On the first save/preview it automatically creates a new
-   Google Sheet titled "Buffett News Page" (headers, column widths, and
-   formatting included), shares it with the address above, and caches its
-   ID in `data/sheet_id.json` so later runs reuse the same sheet.
+5. Run the app. The first time it touches this sheet, it detects it's
+   blank and fills in the title banner, headers, column widths, and
+   formatting automatically, then caches the ID in `data/sheet_id.json` so
+   it isn't re-resolved on every request.
 
 Environment variables, all optional:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `GOOGLE_SERVICE_ACCOUNT_FILE` | `service_account.json` | Path to the service account key |
-| `GOOGLE_SHEET_SHARE_WITH` | *(none)* | Comma-separated email(s) to share a newly created sheet with |
-| `GOOGLE_SHEET_ID` | *(none)* | Point at an existing sheet instead of creating a new one |
-| `GOOGLE_SHEET_TITLE` | `Buffett News Page` | Title used when creating a new sheet |
-| `SHEET_ID_PATH` | `data/sheet_id.json` | Where the created sheet's ID is cached |
+| `GOOGLE_SHEET_ID` | *(none)* | The sheet you created and shared with the service account (see steps 3-4 above) |
+| `GOOGLE_SHEET_TITLE` | `Buffett News Page` | Title written into the banner row when formatting a blank sheet |
+| `SHEET_ID_PATH` | `data/sheet_id.json` | Where the resolved sheet's ID is cached |
+| `GOOGLE_SHEET_SHARE_WITH` | *(none)* | Only relevant on Google Workspace accounts with Drive storage quota — auto-shares a sheet the service account creates itself (see `spreadsheet._create_spreadsheet`); not used by the `GOOGLE_SHEET_ID` flow above |
 
 Use the **Open Google Sheet** link in the app to jump to the live sheet at
 any time.
