@@ -11,6 +11,7 @@ isn't re-resolved on every request.
 """
 import json
 import os
+import re
 
 from datetime import datetime, timedelta
 
@@ -33,11 +34,20 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
 SHEET_ID_PATH = os.environ.get("SHEET_ID_PATH", os.path.join("data", "sheet_id.json"))
 
+def _extract_sheet_id(value):
+    """Accepts either a bare sheet ID or a full Google Sheets URL and
+    returns just the ID."""
+    if not value:
+        return value
+    match = re.search(r"/d/([a-zA-Z0-9-_]+)", value)
+    return match.group(1) if match else value
+
+
 # Fallback if the GOOGLE_SHEET_ID environment variable isn't set/visible to
-# the process — paste the sheet's ID here (the segment between /d/ and
-# /edit in its URL). The env var still wins when both are set.
+# the process — paste the sheet's ID (or its full URL) here. The env var
+# still wins when both are set.
 HARDCODED_SHEET_ID = ""
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID") or HARDCODED_SHEET_ID
+GOOGLE_SHEET_ID = _extract_sheet_id(os.environ.get("GOOGLE_SHEET_ID") or HARDCODED_SHEET_ID)
 
 
 class SheetError(Exception):
