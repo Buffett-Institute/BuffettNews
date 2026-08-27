@@ -1,15 +1,12 @@
 import os
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, redirect, request
 
 import spreadsheet
 from extractor import ExtractionError, extract_article_metadata
+from spreadsheet import SheetError
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-
-XLSX_PATH = os.environ.get(
-    "XLSX_PATH", os.path.join(os.path.dirname(__file__), "data", "Test Buffett_News.xlsx")
-)
 
 @app.route("/")
 def index():
@@ -43,7 +40,9 @@ def save():
     if missing:
         return jsonify({"error": f"Missing required field(s): {', '.join(missing)}"}), 400
     try:
-        row = spreadsheet.append_row(XLSX_PATH, payload)
+        row = spreadsheet.append_row(None, payload)
+    except SheetError as exc:
+        return jsonify({"error": str(exc)}), 502
     except Exception as exc:  # noqa: BLE001
         return jsonify({"error": f"Could not write to the spreadsheet: {exc}"}), 500
     return jsonify({"ok": True, "row": row})
@@ -52,7 +51,9 @@ def save():
 @app.route("/api/recent")
 def recent():
     try:
-        rows = spreadsheet.read_recent_rows(XLSX_PATH, limit=10)
+        rows = spreadsheet.read_recent_rows(None, limit=10)
+    except SheetError as exc:
+        return jsonify({"error": str(exc)}), 502
     except Exception as exc:  # noqa: BLE001
         return jsonify({"error": str(exc)}), 500
     return jsonify({"rows": rows})
@@ -60,7 +61,10 @@ def recent():
 
 @app.route("/download")
 def download():
-    return send_file(XLSX_PATH, as_attachment=True, download_name="Buffett_News_Page.xlsx")
+    try:
+        return redirect(spreadsheet.sheet_url())
+    except SheetError as exc:
+        return jsonify({"error": str(exc)}), 502
 
 
 if __name__ == "__main__":
