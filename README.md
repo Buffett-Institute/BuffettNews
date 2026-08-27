@@ -38,14 +38,13 @@ Then open http://127.0.0.1:5000 in your browser.
 ### Google Sheets setup (one-time)
 
 The app writes to a Google Sheet via a service account, so there's no login
-flow. **Important:** a personal (non-Workspace) service account has no
-Drive storage quota of its own — it cannot create a brand-new spreadsheet,
-only read/write one a real Google account already owns and shared with it.
-So you create the sheet, not the app. Do this once before the first run:
+flow. **Important:** service accounts can't create their own spreadsheets
+(personal accounts have no Drive storage quota) — the app only reads and
+writes a sheet you already own and have shared with it. Do this once
+before the first run:
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), create
-   (or reuse) a project, then enable the **Google Sheets API** and
-   **Google Drive API** for it.
+   (or reuse) a project, then enable the **Google Sheets API** for it.
 2. Under **IAM & Admin → Service Accounts**, create a service account and
    add a JSON key. Download it and save it as `service_account.json` in the
    project root (this file is gitignored — never commit it).
@@ -67,15 +66,14 @@ So you create the sheet, not the app. Do this once before the first run:
    formatting automatically, then caches the ID in `data/sheet_id.json` so
    it isn't re-resolved on every request.
 
-Environment variables, all optional:
+Environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `GOOGLE_SHEET_ID` | *required* | The sheet you created and shared with the service account (see steps 3-4 above) |
 | `GOOGLE_SERVICE_ACCOUNT_FILE` | `service_account.json` | Path to the service account key |
-| `GOOGLE_SHEET_ID` | *(none)* | The sheet you created and shared with the service account (see steps 3-4 above) |
 | `GOOGLE_SHEET_TITLE` | `Buffett News Page` | Title written into the banner row when formatting a blank sheet |
 | `SHEET_ID_PATH` | `data/sheet_id.json` | Where the resolved sheet's ID is cached |
-| `GOOGLE_SHEET_SHARE_WITH` | *(none)* | Only relevant on Google Workspace accounts with Drive storage quota — auto-shares a sheet the service account creates itself (see `spreadsheet._create_spreadsheet`); not used by the `GOOGLE_SHEET_ID` flow above |
 
 Use the **Open Google Sheet** link in the app to jump to the live sheet at
 any time.

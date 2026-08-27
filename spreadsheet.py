@@ -2,13 +2,12 @@
 Appends a new row to the Buffett News Page Google Sheet, replacing the old
 local .xlsx storage. Authenticates as a service account.
 
-Personal (non-Workspace) service accounts have no Drive storage quota of
-their own, so they can't create a brand-new spreadsheet — only read/write
-one a human already owns and shared with them. Point GOOGLE_SHEET_ID at a
-sheet you created yourself (File > Share it with the service account's
-email as Editor); the headers/formatting are applied automatically the
-first time the app touches a blank sheet. The ID is cached in
-SHEET_ID_PATH so it isn't re-resolved on every request.
+Service accounts can't create their own spreadsheets (personal accounts
+have no Drive storage quota), so GOOGLE_SHEET_ID must point at a sheet you
+created yourself and shared with the service account's email as Editor.
+The headers/formatting are applied automatically the first time the app
+touches a blank sheet. The resolved ID is cached in SHEET_ID_PATH so it
+isn't re-resolved on every request.
 """
 import json
 import os
@@ -29,14 +28,10 @@ DOC_TITLE = os.environ.get("GOOGLE_SHEET_TITLE", "Buffett News Page")
 HEADER_ROW = 2  # 1-indexed; row 1 is the merged title banner
 DATA_START_ROW = HEADER_ROW + 1  # newest row always lands here
 
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-]
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
 SHEET_ID_PATH = os.environ.get("SHEET_ID_PATH", os.path.join("data", "sheet_id.json"))
-SHEET_SHARE_WITH = os.environ.get("GOOGLE_SHEET_SHARE_WITH", "")
 
 
 class SheetError(Exception):
@@ -44,7 +39,6 @@ class SheetError(Exception):
 
 
 _sheets_service = None
-_drive_service = None
 
 
 def _get_credentials():
@@ -63,13 +57,6 @@ def _sheets():
     if _sheets_service is None:
         _sheets_service = build("sheets", "v4", credentials=_get_credentials(), cache_discovery=False)
     return _sheets_service
-
-
-def _drive():
-    global _drive_service
-    if _drive_service is None:
-        _drive_service = build("drive", "v3", credentials=_get_credentials(), cache_discovery=False)
-    return _drive_service
 
 
 def _load_cached_sheet():
@@ -152,47 +139,6 @@ def _formatting_requests(sheet_id):
     return requests
 
 
-def _share_with_configured_emails(spreadsheet_id):
-    if not SHEET_SHARE_WITH:
-        return
-    drive = _drive()
-    for email in [e.strip() for e in SHEET_SHARE_WITH.split(",") if e.strip()]:
-        try:
-            drive.permissions().create(
-                fileId=spreadsheet_id,
-                body={"type": "user", "role": "writer", "emailAddress": email},
-                sendNotificationEmail=False,
-            ).execute()
-        except HttpError as exc:
-            raise SheetError(f"Created the sheet but couldn't share it with {email}: {exc}") from exc
-
-
-def _create_spreadsheet():
-    """Only works for Workspace service accounts with Drive storage quota
-    (e.g. via a shared drive) — a bare personal-account service account
-    will 403 here. Prefer pointing GOOGLE_SHEET_ID at a sheet you created
-    and shared with the service account instead."""
-    sheets = _sheets()
-    body = {
-        "properties": {"title": DOC_TITLE},
-        "sheets": [{"properties": {"title": SHEET_TITLE}}],
-    }
-    created = sheets.spreadsheets().create(
-        body=body, fields="spreadsheetId,spreadsheetUrl,sheets.properties.sheetId"
-    ).execute()
-    spreadsheet_id = created["spreadsheetId"]
-    sheet_id = created["sheets"][0]["properties"]["sheetId"]
-    url = created.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
-
-    sheets.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id, body={"requests": _formatting_requests(sheet_id)}
-    ).execute()
-    _share_with_configured_emails(spreadsheet_id)
-
-    _cache_sheet(spreadsheet_id, sheet_id, url)
-    return {"spreadsheet_id": spreadsheet_id, "sheet_id": sheet_id, "url": url}
-
-
 def _is_blank(spreadsheet_id):
     sheets = _sheets()
     resp = sheets.spreadsheets().values().get(
@@ -229,16 +175,16 @@ def _adopt_existing_sheet(env_id):
 def _resolve_sheet():
     """Returns {"spreadsheet_id", "sheet_id", "url"}."""
     env_id = os.environ.get("GOOGLE_SHEET_ID")
-    if env_id:
-        cached = _load_cached_sheet()
-        if cached and cached.get("spreadsheet_id") == env_id:
-            return cached
-        return _adopt_existing_sheet(env_id)
-
+    if not env_id:
+        raise SheetError(
+            "GOOGLE_SHEET_ID is not set. Create a Google Sheet, share it with the "
+            "service account's email as Editor, and set GOOGLE_SHEET_ID to its ID "
+            "(see README.md)."
+        )
     cached = _load_cached_sheet()
-    if cached:
+    if cached and cached.get("spreadsheet_id") == env_id:
         return cached
-    return _create_spreadsheet()
+    return _adopt_existing_sheet(env_id)
 
 
 def sheet_url() -> str:
