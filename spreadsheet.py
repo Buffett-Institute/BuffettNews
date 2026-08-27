@@ -33,6 +33,12 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
 SHEET_ID_PATH = os.environ.get("SHEET_ID_PATH", os.path.join("data", "sheet_id.json"))
 
+# Fallback if the GOOGLE_SHEET_ID environment variable isn't set/visible to
+# the process — paste the sheet's ID here (the segment between /d/ and
+# /edit in its URL). The env var still wins when both are set.
+HARDCODED_SHEET_ID = ""
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID") or HARDCODED_SHEET_ID
+
 
 class SheetError(Exception):
     pass
@@ -174,17 +180,17 @@ def _adopt_existing_sheet(env_id):
 
 def _resolve_sheet():
     """Returns {"spreadsheet_id", "sheet_id", "url"}."""
-    env_id = os.environ.get("GOOGLE_SHEET_ID")
-    if not env_id:
+    if not GOOGLE_SHEET_ID:
         raise SheetError(
-            "GOOGLE_SHEET_ID is not set. Create a Google Sheet, share it with the "
-            "service account's email as Editor, and set GOOGLE_SHEET_ID to its ID "
+            "No Google Sheet ID configured. Create a Google Sheet, share it with the "
+            "service account's email as Editor, and either set the GOOGLE_SHEET_ID "
+            "environment variable or fill in HARDCODED_SHEET_ID in spreadsheet.py "
             "(see README.md)."
         )
     cached = _load_cached_sheet()
-    if cached and cached.get("spreadsheet_id") == env_id:
+    if cached and cached.get("spreadsheet_id") == GOOGLE_SHEET_ID:
         return cached
-    return _adopt_existing_sheet(env_id)
+    return _adopt_existing_sheet(GOOGLE_SHEET_ID)
 
 
 def sheet_url() -> str:

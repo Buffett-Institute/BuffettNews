@@ -61,6 +61,11 @@ before the first run:
    export GOOGLE_SHEET_ID=<SHEET_ID>
    ```
 
+   If your environment doesn't reliably pass environment variables through
+   to the app, you can instead paste the ID directly into
+   `HARDCODED_SHEET_ID` near the top of `spreadsheet.py` — the env var
+   still takes precedence if both are set.
+
 5. Run the app. The first time it touches this sheet, it detects it's
    blank and fills in the title banner, headers, column widths, and
    formatting automatically, then caches the ID in `data/sheet_id.json` so
