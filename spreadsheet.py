@@ -118,7 +118,9 @@ def _create_spreadsheet():
             }
         }],
     }
-    created = sheets.spreadsheets().create(body=body, fields="spreadsheetId,sheetId,spreadsheetUrl").execute()
+    created = sheets.spreadsheets().create(
+        body=body, fields="spreadsheetId,spreadsheetUrl,sheets.properties.sheetId"
+    ).execute()
     spreadsheet_id = created["spreadsheetId"]
     sheet_id = created["sheets"][0]["properties"]["sheetId"]
     url = created.get("spreadsheetUrl") or f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
