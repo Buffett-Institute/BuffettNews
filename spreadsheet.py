@@ -34,9 +34,8 @@ SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_ac
 SHEET_ID_PATH = os.environ.get("SHEET_ID_PATH", os.path.join("data", "sheet_id.json"))
 
 # Fallback if the GOOGLE_SHEET_ID environment variable isn't set/visible to
-# the process — paste the sheet's ID here (the segment between /d/ and
-# /edit in its URL). The env var still wins when both are set.
-HARDCODED_SHEET_ID = ""
+# the process. The env var still wins when both are set.
+HARDCODED_SHEET_ID = "https://docs.google.com/spreadsheets/d/1NTWyKxvovu7w292xZ29e9ZiSCAwIri_ngU4gPhTSHnM/edit?usp=sharing"
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID") or HARDCODED_SHEET_ID
 
 
