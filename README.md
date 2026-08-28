@@ -83,19 +83,6 @@ Environment variables:
 Use the **Open Google Sheet** link in the app to jump to the live sheet at
 any time.
 
-## Why this runs locally instead of on GitHub Pages
-
-GitHub Pages only serves static files — it can't run the Python server that
-fetches article pages and writes to the spreadsheet. Fetching arbitrary
-article URLs directly from JavaScript in a browser is also blocked by most
-sites' CORS policies, so a purely static page can't scrape articles either.
-This needs a small backend, which is why it's built as a local Flask app.
-
-If you'd like this reachable from a browser without anyone running it
-locally, the same Flask app can be deployed as-is to a free/low-cost host
-like Render, Railway, or PythonAnywhere — ask if you'd like help setting
-that up.
-
 ## Project layout
 
 - `app.py` — Flask routes (preview, save, recent rows, open sheet)
