@@ -5,11 +5,16 @@ article that also names its connection to the Roberta Buffett Institute.
 Falls back to None (letting the caller use a simpler template) if no API
 key is configured, the `anthropic` package isn't installed, or the call
 fails for any reason -- the app should keep working without Claude access.
+Failures are logged (not raised) so the cause is visible in the server logs.
 """
+import logging
+
 try:
     import anthropic
 except ImportError:
     anthropic = None
+
+logger = logging.getLogger(__name__)
 
 MODEL = "claude-opus-5"
 
@@ -28,9 +33,12 @@ Reply with only the two sentences -- no preamble, no quotation marks."""
 
 
 def generate_short_description(title, article_gist, connection_note):
-    """Returns a short AI-written summary, or None if Claude isn't available. 
+    """Returns a short AI-written summary, or None if Claude isn't available.
     If the call fails, the summary will fall back on the simple summary which pulls whatever is on the webpage"""
-    if anthropic is None or not connection_note:
+    if anthropic is None:
+        logger.warning("Claude summary skipped: the anthropic package isn't installed.")
+        return None
+    if not connection_note:
         return None
     try:
         client = anthropic.Anthropic()
@@ -50,4 +58,5 @@ def generate_short_description(title, article_gist, connection_note):
         text = text.strip().strip('"')
         return text or None
     except Exception:
+        logger.exception("Claude summary failed; falling back to the template description.")
         return None
